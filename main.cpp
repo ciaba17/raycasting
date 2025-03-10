@@ -5,53 +5,14 @@
 
 using namespace std;
 
-class projectile{
-    public:
-        float width = 14, height = 14;
-        float x, y;
-        float rotation;
-        float movementSpeed = 10;
-        bool fired;
-        bool collided = false;
-        
-        sf::RectangleShape shape;
-    
-        projectile(float x, float y, float rotation){
-            this-> x = x;
-            this-> y = y;
-            this-> rotation = rotation;
-
-            shape.setSize(sf::Vector2f(width, height));
-            shape.setFillColor(sf::Color::Blue);
-            shape.setOrigin(width/2, height/2);
-        }
-
-        void setPos(){
-            shape.setPosition(x, y);
-        }
-};
-
-class character{
-    public:
-        float x, y;
-        float rotation = 0;
-        float movementSpeed = 5;
-        float rotationSpeed = 5;
-
-        character(float x, float y){
-            this-> x = x;
-            this-> y = y;
-        }
-};
-
-class wall{
+class Wall{
     public:
         float width, height;
         float x, y;
     
         sf::RectangleShape shape;
 
-        wall(float x, float y, float width, float height){
+        Wall(float x, float y, float width, float height){
             this-> x = x;
             this-> y = y;
             this-> width = width;
@@ -64,22 +25,64 @@ class wall{
         }
 };
 
-void drawPlayer(sf::RenderWindow& window, float x, float y, float rotation);
+
+struct Ray{
+    sf::Vector2f start;
+    sf::Vector2f end;
+    bool collided = false;
+
+    Ray (float startX, float startY, float angle, vector<Wall>& walls){
+        start = {startX, startY};
+
+        float radAngle = angle * 3.14159f / 180.0f;
+
+        sf::Vector2f direction = {cos(radAngle), sin(radAngle)};
+        float maxDistance = 1000.0f;
+        end = start + direction * maxDistance;
+
+
+        for (auto& wall : walls){
+            sf::FloatRect wallBounds(wall.x - wall.width / 2, wall.y - wall.height / 2, wall.width, wall.height);
+            if (wallBounds.contains(end)){
+                collided = true;
+                end = {wall.x, wall.y};
+                break;
+            }
+        }
+    }
+};
+
+class Character{
+    public:
+        float x, y;
+        float direction = 0;
+        float movementSpeed = 5;
+        float rotationSpeed = 5;
+
+        Character(float x, float y){
+            this-> x = x;
+            this-> y = y;
+        }
+};
+
+
+void drawPlayer(float x, float y, float rotation);
 void playerLogic();
-void projectileLogic();
-void drawProjectiles(sf::RenderWindow& window);
+void drawRays();
+void shootRay(float playerX, float playerY, float rotation, std::vector<Wall>& walls);
 
 int windowWidth = 800, windowHeight = 600; // Grandezza finestra
-vector<projectile> projectiles; // Creazione del vettore che contiene i proiettili
-vector<wall> walls; // Creazopme del vettore che contiene in muri
-character player(100, 100); // Creazione del player
+sf::RenderWindow window (sf::VideoMode(windowWidth, windowHeight), "prova raycasting");
+std::vector<Ray> rays; // Lista dei raggi attivi
+vector<Wall> walls; // Creazopme del vettore che contiene in muri
+Character player(100, 100); // Creazione del player
+Ray ray();
 bool moveUp = false, moveDown = false, moveLeft = false, moveRight = false;
 
 int main(){
-    sf::RenderWindow window (sf::VideoMode(windowWidth, windowHeight), "prova raycasting");
     window.setFramerateLimit(60);
 
-    walls.push_back(wall(500, 400, 100, 150));
+    walls.push_back(Wall(500, 400, 100, 150));
 
 
     while(window.isOpen()){
@@ -115,24 +118,18 @@ int main(){
             if (event.type == sf::Event::KeyPressed){
                 // Spara proiettile
                 if (event.key.code == sf::Keyboard::Space){
-                    int x = player.x + 15 * cos(player.rotation * 3.14159f / 180.0f);
-                    int y = player.y + 15 * sin(player.rotation * 3.14159f / 180.0f);
-                    projectiles.emplace_back(x, y, player.rotation); // Crea un proiettile
+                    shootRay(player.x, player.y, player.direction, walls);
                 }
             }
         }
         playerLogic();
 
-        //---- LOGICA PROIETTILE ----
-        if (projectiles.size() > 0)
-            projectileLogic();
-
 
         window.clear(sf::Color::Black);
 
-        drawPlayer(window, player.x, player.y, player.rotation);
+        drawPlayer(player.x, player.y, player.direction);
         
-        drawProjectiles(window);
+        drawRays();
         window.draw(walls[0].shape);
 
         window.display();
@@ -143,7 +140,7 @@ int main(){
 }
 
 
-void drawPlayer(sf::RenderWindow& window, float x, float y, float rotation){
+void drawPlayer(float x, float y, float rotation){
     const float sqrSide = 30;
     const float headWidth = sqrSide, headHeight = sqrSide/5; 
 
@@ -168,70 +165,44 @@ void drawPlayer(sf::RenderWindow& window, float x, float y, float rotation){
 
 void playerLogic(){
     // Controlla che la rotazione stia tra -360 e 360
-    if (player.rotation > 360){
-        player.rotation = 0;
+    if (player.direction > 360){
+        player.direction = 0;
         }
-        else if (player.rotation < -360){
-            player.rotation = 0;
+        else if (player.direction < -360){
+            player.direction = 0;
         }
 
     // Movimento
     if (moveUp){
-        player.x += player.movementSpeed * cos(player.rotation * 3.14159f / 180.0f);
-        player.y += player.movementSpeed * sin(player.rotation * 3.14159f / 180.0f);
+        player.x += player.movementSpeed * cos(player.direction * 3.14159f / 180.0f);
+        player.y += player.movementSpeed * sin(player.direction * 3.14159f / 180.0f);
     }
     else if (moveDown){
-        player.x += -player.movementSpeed * cos(player.rotation * 3.14159f / 180.0f);
-        player.y += -player.movementSpeed * sin(player.rotation * 3.14159f / 180.0f);
+        player.x += -player.movementSpeed * cos(player.direction * 3.14159f / 180.0f);
+        player.y += -player.movementSpeed * sin(player.direction * 3.14159f / 180.0f);
     }
     if (moveLeft){
-        player.rotation -= player.rotationSpeed;
+        player.direction -= player.rotationSpeed;
     }
     else if (moveRight){
-        player.rotation += player.rotationSpeed;
+        player.direction += player.rotationSpeed;
     }
 }
 
 
-void projectileLogic(){
-    for (auto& projectile : projectiles) {
-        if (!projectile.collided) {
-            // Movimento del proiettile
-            projectile.x += projectile.movementSpeed * cos(projectile.rotation * 3.14159f / 180.0f);
-            projectile.y += projectile.movementSpeed * sin(projectile.rotation * 3.14159f / 180.0f);
-            projectile.setPos();
-        }
-        
-        // Collisione con il bordo della finestra
-        if (projectile.x > windowWidth || projectile.x < 0 || projectile.y > windowHeight || projectile.y < 0){
-            projectile.collided = true;
-        }
-        
-        // Collisione con il muro
-        for (auto& wall : walls){
-            float wallLeft = wall.x - wall.width / 2 - projectile.width/2;
-            float wallRight = wall.x + wall.width / 2 + projectile.width/2;
-            float wallTop = wall.y - wall.height / 2 - projectile.height/2;
-            float wallBottom = wall.y + wall.height / 2 + projectile.height/2;
+void drawRays(){
+    for (auto& ray : rays){
+        sf::VertexArray line(sf::Lines, 2);
+        line[0].position = ray.start;
+        line[0].color = sf::Color::Red;  // Colore del raggio
+        line[1].position = ray.end;
+        line[1].color = sf::Color::Red;
 
-            // Verifica se il proiettile si sovrappone al muro
-            if (projectile.x > wallLeft && projectile.x < wallRight &&
-                projectile.y > wallTop && projectile.y < wallBottom){
-                projectile.collided = true;
-            }
-        }
+        window.draw(line);
     }
 }
 
 
-void drawProjectiles(sf::RenderWindow& window){
-    for (auto& projectile : projectiles){
-            window.draw(projectile.shape);
-        }
+void shootRay(float playerX, float playerY, float rotation, std::vector<Wall>& walls) {
+    rays.emplace_back(playerX, playerY, rotation, walls);
 }
-
-
-
-
-
-
