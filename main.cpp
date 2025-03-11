@@ -26,32 +26,6 @@ class Wall{
 };
 
 
-struct Ray{
-    sf::Vector2f start;
-    sf::Vector2f end;
-    bool collided = false;
-
-    Ray (float startX, float startY, float angle, vector<Wall>& walls){
-        start = {startX, startY};
-
-        float radAngle = angle * 3.14159f / 180.0f;
-
-        sf::Vector2f direction = {cos(radAngle), sin(radAngle)};
-        float maxDistance = 1000.0f;
-        end = start + direction * maxDistance;
-
-
-        for (auto& wall : walls){
-            sf::FloatRect wallBounds(wall.x - wall.width / 2, wall.y - wall.height / 2, wall.width, wall.height);
-            if (wallBounds.contains(end)){
-                collided = true;
-                end = {wall.x, wall.y};
-                break;
-            }
-        }
-    }
-};
-
 class Character{
     public:
         float x, y;
@@ -68,21 +42,18 @@ class Character{
 
 void drawPlayer(float x, float y, float rotation);
 void playerLogic();
-void drawRays();
-void shootRay(float playerX, float playerY, float rotation, std::vector<Wall>& walls);
+void drawGrid();
 
 int windowWidth = 800, windowHeight = 600; // Grandezza finestra
 sf::RenderWindow window (sf::VideoMode(windowWidth, windowHeight), "prova raycasting");
-std::vector<Ray> rays; // Lista dei raggi attivi
 vector<Wall> walls; // Creazopme del vettore che contiene in muri
 Character player(100, 100); // Creazione del player
-Ray ray();
 bool moveUp = false, moveDown = false, moveLeft = false, moveRight = false;
 
 int main(){
     window.setFramerateLimit(60);
-
     walls.push_back(Wall(500, 400, 100, 150));
+    
 
 
     while(window.isOpen()){
@@ -118,7 +89,7 @@ int main(){
             if (event.type == sf::Event::KeyPressed){
                 // Spara proiettile
                 if (event.key.code == sf::Keyboard::Space){
-                    shootRay(player.x, player.y, player.direction, walls);
+                    //spara
                 }
             }
         }
@@ -126,11 +97,12 @@ int main(){
 
 
         window.clear(sf::Color::Black);
+        drawGrid();
 
         drawPlayer(player.x, player.y, player.direction);
-        
-        drawRays();
         window.draw(walls[0].shape);
+        //drawRays();
+
 
         window.display();
     }
@@ -190,19 +162,24 @@ void playerLogic(){
 }
 
 
-void drawRays(){
-    for (auto& ray : rays){
-        sf::VertexArray line(sf::Lines, 2);
-        line[0].position = ray.start;
-        line[0].color = sf::Color::Red;  // Colore del raggio
-        line[1].position = ray.end;
-        line[1].color = sf::Color::Red;
+void drawGrid(){
+    float sqrSide = 40;
 
-        window.draw(line);
+    int widthGridNumber = windowWidth/sqrSide;
+    for (int n = 0; n < widthGridNumber; n++){
+        sf::Vertex line[] = {
+            sf::Vertex(sf::Vector2f(n*sqrSide, 0), sf::Color(128,128,128)),
+            sf::Vertex(sf::Vector2f(n*sqrSide,windowHeight), sf::Color(128,128,128))
+        };
+        window.draw(line, 2, sf::Lines);
     }
-}
 
-
-void shootRay(float playerX, float playerY, float rotation, std::vector<Wall>& walls) {
-    rays.emplace_back(playerX, playerY, rotation, walls);
+    int heightGridNumber = windowHeight/sqrSide;
+    for (int n = 0; n < heightGridNumber; n++){
+        sf::Vertex line[] = {
+            sf::Vertex(sf::Vector2f(0, n*sqrSide), sf::Color(128,128,128)),
+            sf::Vertex(sf::Vector2f(windowWidth, n*sqrSide), sf::Color(128,128,128))
+        };
+        window.draw(line, 2, sf::Lines);
+    }
 }
