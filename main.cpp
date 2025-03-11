@@ -6,7 +6,7 @@
 using namespace std;
 
 bool intersect(sf::Vector2f p1, sf::Vector2f p2, sf::Vector2f p3, sf::Vector2f p4, sf::Vector2f &intersection);
-
+int rayNumber = 100;
 
 struct Wall{
     sf::Vertex side[2] = {};
@@ -43,10 +43,14 @@ struct Ray{
     sf::Vector2f start;
     sf::Vector2f end;
 
-    Ray(sf::Vector2f start, vector<Wall> walls, int rayNumber){
+    Ray(sf::Vector2f start, vector<Wall> walls, int rayCont){
         this-> start = start;
-        float endX = 1000 * cos((player.direction+rayNumber) * 3.14159f / 180.0f);
-        float endY = 1000 * sin((player.direction+rayNumber) * 3.14159f / 180.0f);
+
+        float coneAngle = 60;
+        float offSet = coneAngle / rayNumber;
+        float angle = player.direction - (coneAngle/2) + rayCont * offSet;
+        float endX = 1000 * cos(angle * 3.14159f / 180.0f);
+        float endY = 1000 * sin(angle * 3.14159f / 180.0f);
         end = sf::Vector2f(endX, endY);
 
         for (auto wall : walls){
@@ -97,7 +101,7 @@ int main(){
         playerLogic();
 
         rays.clear();
-        for (int i = 0; i < 50; i++){
+        for (int i = 0; i < rayNumber; i++){
             rays.push_back(Ray(sf::Vector2f(player.x,player.y), walls, i));
         }
 
