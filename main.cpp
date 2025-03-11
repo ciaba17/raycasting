@@ -5,7 +5,9 @@
 
 using namespace std;
 
+// Funzione per calcolare l'intersezione tra due segmenti
 bool intersect(sf::Vector2f p1, sf::Vector2f p2, sf::Vector2f p3, sf::Vector2f p4, sf::Vector2f &intersection);
+// Numero di raggi proiettati
 int rayNumber = 100;
 
 struct Wall{
@@ -25,44 +27,49 @@ struct Wall{
 
 class Character{
     public:
-        float x, y;
-        float direction = 0;
-        float movementSpeed = 5;
-        float rotationSpeed = 5;
+         float x, y; // Posizione del giocatore
+        float direction = 0; // Angolo di direzione in gradi
+        float movementSpeed = 5; // Velocità di movimento
+        float rotationSpeed = 5; // Velocità di rotazione
 
+        // Costruttore
         Character(float x, float y){
-            this-> x = x;
-            this-> y = y;
+            this->x = x;
+            this->y = y;
         }
 };
 
+// Creazione del giocatore
 Character player(100, 100); // Creazione del player
 
+// Struttura per i raggi
 struct Ray{
-    sf::Vertex rayLine[2] = {};
-    sf::Vector2f start;
-    sf::Vector2f end;
+    sf::Vertex rayLine[2] = {}; // Due vertici per il raggio
+    sf::Vector2f start; // Punto iniziale
+    sf::Vector2f end;   // Punto finale
 
+    // Costruttore
     Ray(sf::Vector2f start, vector<Wall> walls, int rayCont){
-        this-> start = start;
+        this->start = start;
+        
+        float FOV = 60; // Campo visivo in gradi
+        float offSet = FOV / rayNumber; // Spaziatura tra i raggi
+        float angle = player.direction - (FOV/2) + rayCont * offSet; // Calcolo dell'angolo del raggio
 
-        float coneAngle = 60;
-        float offSet = coneAngle / rayNumber;
-        float angle = player.direction - (coneAngle/2) + rayCont * offSet;
+        // Calcolo della direzione del raggio
         float endX = 1000 * cos(angle * 3.14159f / 180.0f);
         float endY = 1000 * sin(angle * 3.14159f / 180.0f);
         end = sf::Vector2f(endX, endY);
 
+        // Controllo intersezioni con i muri
         for (auto wall : walls){
             intersect(start, end, wall.start, wall.end, end);
         }
+        
         rayLine[0] = start;
         rayLine[1] = end;
-        
-
     }
 };
-
 
 void drawPlayer(float x, float y, float rotation);
 void playerInput();
@@ -182,8 +189,8 @@ void playerLogic(){
     if (player.direction > 360){
         player.direction = 0;
         }
-        else if (player.direction < -360){
-            player.direction = 0;
+        else if (player.direction < 0){
+            player.direction = 360;
         }
 
     // Movimento
